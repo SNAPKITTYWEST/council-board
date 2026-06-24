@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Council"/>
+<meta name="theme-color" content="#04040a"/>
+<link rel="manifest" href="manifest.json"/>
+<title>SnapKitty Council</title>
+<!-- CodeMirror 5 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/scheme/scheme.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#04040a;--bg1:#0a0a12;--bg2:#0d0d18;--bg3:#131320;
+  --border:#1e1e2e;--text:#e0e0f0;--dim:#555;--dim2:#333;
+  --green:#00ff88;--blue:#0a84ff;--purple:#bf5af2;--gold:#ffd60a;--red:#ff453a;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'SF Mono',Monaco,monospace;overflow:hidden}
+
+/* ── Layout ── */
+#app{height:100%;display:flex;flex-direction:column}
+
+/* ── Header ── */
+#header{
+  display:flex;align-items:center;gap:12px;
+  padding:0 16px;height:50px;
+  background:var(--bg1);border-bottom:1px solid var(--border);
+  flex-shrink:0;padding-top:env(safe-area-inset-top)
+}
+#logo{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--green)}
+#logo span{color:var(--dim);font-weight:400}
+#worm-badge{
+  margin-left:auto;font-size:9px;letter-spacing:1.5px;
+  color:var(--dim);background:var(--bg3);border:1px solid var(--border);
+  padding:3px 8px;border-radius:4px
+}
+
+/* ── Tabs ── */
+#tabs{
+  display:flex;border-bottom:1px solid var(--border);
+  background:var(--bg1);flex-shrink:0
+}
+.tab{
+  padding:10px 18px;font-size:10px;letter-spacing:2px;color:var(--dim);
+  cursor:pointer;border-bottom:2px solid transparent;transition:all .15s
+}
+.tab.active{color:var(--green);border-bottom-color:var(--green)}
+.tab:hover:not(.active){color:var(--text)}
+
+/* ── Body ── */
+#body{flex:1;overflow:hidden;display:flex}
+
+/* ── Roster sidebar ── */
+#roster{
+  width:200px;flex-shrink:0;border-right:1px solid var(--border);
+  overflow-y:auto;background:var(--bg1);display:flex;flex-direction:column
+}
+#roster-title{
+  padding:12px 14px 8px;font-size:9px;letter-spacing:2px;color:var(--dim);
+  border-bottom:1px solid var(--border)
+}
+.seat{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;border-bottom:1px solid var(--dim2);cursor:pointer;
+  transition:background .1s
+}
+.seat:hover{background:var(--bg3)}
+.seat.active-seat{background:var(--bg3);border-left:2px solid var(--green)}
+.seat-icon{font-size:16px;width:22px;text-align:center}
+.seat-info{flex:1;min-width:0}
+.seat-name{font-size:11px;font-weight:600;color:var(--text)}
+.seat-role{font-size:9px;color:var(--dim);margin-top:1px}
+.seat-status{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
+
+/* ── Main panel ── */
+#main-panel{flex:1;overflow:hidden;display:flex;flex-direction:column}
+
+/* ── Board view ── */
+#board-view{flex:1;overflow-y:auto;padding:20px}
+.section-title{font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:12px}
+.motion-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  padding:14px 16px;margin-bottom:10px
+}
+.motion-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.motion-title{font-size:13px;font-weight:600;color:var(--text)}
+.motion-badge{
+  font-size:8px;letter-spacing:1px;padding:2px 7px;border-radius:3px;
+  background:var(--green)20;color:var(--green);border:1px solid var(--green)40
+}
+.motion-badge.pending{background:#ffd60a20;color:var(--gold);border-color:#ffd60a40}
+.motion-meta{font-size:11px;color:var(--dim);margin-bottom:10px}
+.vote-row{display:flex;gap:8px}
+.vote-btn{
+  padding:5px 14px;border-radius:5px;font-size:11px;font-family:inherit;
+  cursor:pointer;border:none;font-weight:600;letter-spacing:1px
+}
+.vote-btn.aye{background:var(--green)20;color:var(--green);border:1px solid var(--green)40}
+.vote-btn.nay{background:var(--red)20;color:var(--red);border:1px solid var(--red)40}
+.vote-btn.abstain{background:var(--bg3);color:var(--dim);border:1px solid var(--border)}
+.vote-btn:hover{opacity:.8}
+
+/* dispatch form */
+#dispatch-form{
+  margin-top:24px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px
+}
+#dispatch-form .section-title{margin-bottom:10px}
+#motion-input{
+  width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:inherit;font-size:12px;padding:10px 12px;
+  resize:none;outline:none;margin-bottom:10px
+}
+#motion-input:focus{border-color:var(--green)55}
+#dispatch-select{
+  background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:inherit;font-size:11px;padding:7px 10px;margin-bottom:10px;
+  width:100%;outline:none
+}
+#dispatch-btn{
+  padding:8px 18px;background:var(--green)20;color:var(--green);
+  border:1px solid var(--green)40;border-radius:6px;font-family:inherit;
+  font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer
+}
+#dispatch-btn:hover{background:var(--green)30}
+
+/* ── IDE view ── */
+#ide-view{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#ide-toolbar{
+  display:flex;align-items:center;gap:10px;padding:8px 14px;
+  background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0
+}
+#ide-lang{
+  background:var(--bg);border:1px solid var(--border);border-radius:4px;
+  color:var(--text);font-family:inherit;font-size:10px;padding:4px 8px;outline:none
+}
+#ide-run{
+  padding:4px 14px;background:var(--green)20;color:var(--green);
+  border:1px solid var(--green)40;border-radius:4px;font-family:inherit;
+  font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;margin-left:auto
+}
+#ide-run:hover{background:var(--green)30}
+#ide-seal-btn{
+  padding:4px 12px;background:var(--purple)20;color:var(--purple);
+  border:1px solid var(--purple)40;border-radius:4px;font-family:inherit;
+  font-size:10px;cursor:pointer
+}
+#editor-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.CodeMirror{
+  height:100%!important;background:var(--bg)!important;color:var(--text)!important;
+  font-size:12px!important;line-height:1.7!important;font-family:'SF Mono',Monaco,monospace!important
+}
+.CodeMirror-scroll{height:100%}
+#ide-output{
+  height:120px;flex-shrink:0;background:var(--bg1);border-top:1px solid var(--border);
+  overflow-y:auto;padding:8px 12px;font-size:10px;color:var(--green);
+  font-family:'SF Mono',Monaco,monospace;line-height:1.6
+}
+
+/* ── Feed view ── */
+#feed-view{flex:1;overflow-y:auto;padding:14px}
+.feed-item{
+  display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--dim2)
+}
+.feed-dot{
+  width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:5px
+}
+.feed-body{flex:1;min-width:0}
+.feed-src{font-size:9px;letter-spacing:1.5px;font-weight:700;margin-bottom:2px}
+.feed-text{font-size:11px;color:var(--dim);line-height:1.5;word-break:break-word}
+.feed-ts{font-size:9px;color:var(--dim2);margin-top:2px}
+#feed-empty{color:var(--dim);font-size:11px;text-align:center;margin-top:40px}
+
+/* ── Bottom WORM bar ── */
+#worm-bar{
+  height:32px;display:flex;align-items:center;gap:10px;
+  padding:0 14px;background:var(--bg1);border-top:1px solid var(--border);
+  flex-shrink:0;padding-bottom:env(safe-area-inset-bottom);font-size:9px
+}
+#worm-seal{color:var(--dim);font-family:'SF Mono',Monaco,monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#worm-dot{width:6px;height:6px;border-radius:50%;background:var(--dim);flex-shrink:0}
+
+/* ── Hidden panels ── */
+.panel{display:none}
+.panel.visible{display:flex;flex:1;overflow:hidden;flex-direction:column}
+
+/* ── Mobile responsive ── */
+@media(max-width:600px){
+  #roster{display:none}
+  .tab{padding:10px 14px;font-size:9px;letter-spacing:1.5px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div id="header">
+    <div id="logo">COUNCIL <span>/ SOVEREIGN BOARD</span></div>
+    <div id="worm-badge">WORM ○</div>
+  </div>
+
+  <!-- Tabs -->
+  <div id="tabs">
+    <div class="tab active" onclick="switchTab('board')">BOARD</div>
+    <div class="tab" onclick="switchTab('ide')">IDE</div>
+    <div class="tab" onclick="switchTab('feed')">FEED</div>
+  </div>
+
+  <!-- Body -->
+  <div id="body">
+
+    <!-- Roster sidebar -->
+    <div id="roster">
+      <div id="roster-title">COUNCIL SEATS</div>
+      <div id="seat-list"></div>
+    </div>
+
+    <!-- Main panel -->
+    <div id="main-panel">
+
+      <!-- Board panel -->
+      <div id="panel-board" class="panel visible">
+        <div id="board-view">
+          <p class="section-title">ACTIVE MOTIONS</p>
+          <div id="motions-list"></div>
+          <div id="dispatch-form">
+            <p class="section-title">DISPATCH MOTION</p>
+            <textarea id="motion-input" rows="3" placeholder="State the motion…"></textarea>
+            <select id="dispatch-select">
+              <option value="bob">Route to BOB — Orchestrator</option>
+              <option value="sentinel">Route to SENTINEL — Security</option>
+              <option value="vault">Route to VAULT — Treasury</option>
+              <option value="atlas">Route to ATLAS — Operations</option>
+              <option value="herald">Route to HERALD — Communications</option>
+              <option value="axiom">Route to AXIOM — Procurement</option>
+              <option value="ledger">Route to LEDGER — Audit</option>
+            </select>
+            <button id="dispatch-btn" onclick="dispatchMotion()">⬡ DISPATCH &amp; SEAL</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- IDE panel -->
+      <div id="panel-ide" class="panel">
+        <div id="ide-toolbar">
+          <select id="ide-lang" onchange="setLang(this.value)">
+            <option value="javascript">EmojiScript / JS</option>
+            <option value="scheme">LISP / Scheme</option>
+            <option value="text/x-python">Python</option>
+            <option value="text/x-csrc">C / Rust stub</option>
+          </select>
+          <span style="font-size:10px;color:var(--dim)">SOVEREIGN IDE</span>
+          <button id="ide-seal-btn" onclick="sealCode()">🔒 SEAL</button>
+          <button id="ide-run" onclick="runCode()">▶ RUN</button>
+        </div>
+        <div id="editor-wrap">
+          <textarea id="editor-raw"></textarea>
+        </div>
+        <div id="ide-output">&gt; Ready. Write sovereign code and press RUN.</div>
+      </div>
+
+      <!-- Feed panel -->
+      <div id="panel-feed" class="panel">
+        <div id="feed-view">
+          <p class="section-title">SOVEREIGN FEED</p>
+          <div id="feed-list"><p id="feed-empty">Polling feed…</p></div>
+        </div>
+      </div>
+
+    </div><!-- /main-panel -->
+  </div><!-- /body -->
+
+  <!-- WORM bar -->
+  <div id="worm-bar">
+    <div id="worm-dot"></div>
+    <div id="worm-seal">— no seal yet —</div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ── Council seats ──────────────────────────────────────────────────────────────
+const SEATS = [
+  {key:'bob',      icon:'⬡', name:'BOB',      role:'Chair · Orchestrator',  color:'#00ff88'},
+  {key:'sentinel', icon:'🛡', name:'SENTINEL', role:'Security',              color:'#ff453a'},
+  {key:'vault',    icon:'🏦', name:'VAULT',    role:'Treasury',              color:'#ffd60a'},
+  {key:'atlas',    icon:'🌐', name:'ATLAS',    role:'Operations',            color:'#0a84ff'},
+  {key:'herald',   icon:'📡', name:'HERALD',   role:'Communications',        color:'#00ff88'},
+  {key:'axiom',    icon:'∴',  name:'AXIOM',    role:'Procurement',           color:'#bf5af2'},
+  {key:'ledger',   icon:'📒', name:'LEDGER',   role:'Audit · WORM',         color:'#ffd60a'},
+]
+
+const MESH = 'https://sovereign-mesh.snapkittywest.workers.dev'
+let wormChain = []
+let feedSince = 0
+let activeSeat = 'bob'
+let editor = null
+
+// ── Render roster ──────────────────────────────────────────────────────────────
+function buildRoster() {
+  const list = document.getElementById('seat-list')
+  list.innerHTML = SEATS.map(s => `
+    <div class="seat ${s.key===activeSeat?'active-seat':''}" onclick="selectSeat('${s.key}')" id="seat-${s.key}">
+      <span class="seat-icon">${s.icon}</span>
+      <div class="seat-info">
+        <div class="seat-name">${s.name}</div>
+        <div class="seat-role">${s.role}</div>
+      </div>
+      <div class="seat-status" style="background:${s.color}"></div>
+    </div>`).join('')
+}
+
+function selectSeat(key) {
+  activeSeat = key
+  document.querySelectorAll('.seat').forEach(el => el.classList.remove('active-seat'))
+  const el = document.getElementById('seat-'+key)
+  if (el) el.classList.add('active-seat')
+}
+
+// ── Active motions ─────────────────────────────────────────────────────────────
+const MOTIONS = [
+  {id:'m1', title:'Authorize WORM chain expansion to GitLab Orbit', agent:'ATLAS', status:'open',  ts:'2026-06-23T04:00:00Z'},
+  {id:'m2', title:'Allocate treasury reserve for Resonance ISA WASM build', agent:'VAULT', status:'open',  ts:'2026-06-23T03:30:00Z'},
+  {id:'m3', title:'Deploy council-board PWA to GitHub Pages', agent:'HERALD', status:'passed', ts:'2026-06-23T05:00:00Z'},
+]
+
+function buildMotions() {
+  const list = document.getElementById('motions-list')
+  list.innerHTML = MOTIONS.map(m => {
+    const seat = SEATS.find(s => s.name === m.agent)
+    return `<div class="motion-card">
+      <div class="motion-header">
+        <div class="motion-title">${m.title}</div>
+        <span class="motion-badge ${m.status==='open'?'pending':''}">${m.status==='open'?'PENDING':'PASSED'}</span>
+      </div>
+      <div class="motion-meta">Routed by ${seat?.icon||''} ${m.agent} · ${new Date(m.ts).toLocaleString()}</div>
+      ${m.status==='open'?`<div class="vote-row">
+        <button class="vote-btn aye" onclick="vote('${m.id}','aye')">AYE</button>
+        <button class="vote-btn nay" onclick="vote('${m.id}','nay')">NAY</button>
+        <button class="vote-btn abstain" onclick="vote('${m.id}','abstain')">ABSTAIN</button>
+      </div>`:''}
+    </div>`
+  }).join('')
+}
+
+function vote(id, v) {
+  const seal = wormSeal('COUNCIL', 'VOTE', `${id}:${v}`)
+  const m = MOTIONS.find(x => x.id===id)
+  if (m) { m.status = 'passed'; buildMotions() }
+  addOutput(`[VOTE] Motion ${id} → ${v.toUpperCase()} · seal:${seal.slice(0,12)}`)
+  updateWormBar(seal)
+}
+
+// ── Dispatch ───────────────────────────────────────────────────────────────────
+async function dispatchMotion() {
+  const text = document.getElementById('motion-input').value.trim()
+  if (!text) return
+  const agent = document.getElementById('dispatch-select').value
+  const seal = wormSeal('COUNCIL', 'DISPATCH', text)
+  MOTIONS.unshift({
+    id: 'm'+Date.now(), title: text,
+    agent: SEATS.find(s=>s.key===agent)?.name||agent.toUpperCase(),
+    status:'open', ts: new Date().toISOString()
+  })
+  buildMotions()
+  document.getElementById('motion-input').value = ''
+  updateWormBar(seal)
+  // Forward to CF Worker
+  fetch(MESH+'/webhook/council',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({event:'DISPATCH', agent, motion: text, seal})
+  }).catch(()=>{})
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names=['board','ide','feed']
+    t.classList.toggle('active', names[i]===name)
+  })
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('visible'))
+  const panel = document.getElementById('panel-'+name)
+  if (panel) panel.classList.add('visible')
+  if (name==='ide' && !editor) initEditor()
+  if (name==='feed') pollFeed()
+}
+
+// ── CodeMirror IDE ────────────────────────────────────────────────────────────
+function initEditor() {
+  const ta = document.getElementById('editor-raw')
+  editor = CodeMirror.fromTextArea(ta, {
+    mode: 'javascript',
+    theme: 'dracula',
+    lineNumbers: true,
+    autoCloseBrackets: true,
+    indentWithTabs: false,
+    tabSize: 2,
+    lineWrapping: true,
+    value: '// EmojiScript — Sovereign Code\n// 🔍 hunt · 🔄 resurrect · 🔒 seal · ↩️ execute\n\n🔍 "https://gitlab.com/SNAPKITTYWEST/shadow-orchestrator" 🔄 ↩️\n',
+  })
+  editor.setValue('// EmojiScript — Sovereign Code\n// 🔍 hunt · 🔄 resurrect · 🔒 seal · ↩️ execute\n\n🔍 "https://gitlab.com/SNAPKITTYWEST/shadow-orchestrator" 🔄 ↩️\n')
+  setTimeout(() => editor.refresh(), 100)
+}
+
+function setLang(mode) {
+  if (editor) editor.setOption('mode', mode)
+}
+
+function runCode() {
+  if (!editor) return
+  const code = editor.getValue()
+  const seal = wormSeal('FORGE', 'RUN', code.slice(0,64))
+  const lines = code.split('\n').filter(l => !l.startsWith('//') && l.trim())
+  addOutput(`> RUN [${lines.length} lines] · seal:${seal.slice(0,12)}`)
+  // Parse EmojiScript tokens
+  const tokens = []
+  if (code.includes('🔍')) tokens.push('HUNT')
+  if (code.includes('🔄')) tokens.push('RESURRECT')
+  if (code.includes('🔒')) tokens.push('SEAL')
+  if (code.includes('↩️')) tokens.push('EXECUTE')
+  if (tokens.length) {
+    addOutput(`> EmojiScript: ${tokens.join(' → ')}`)
+    addOutput(`> Dispatching to Shadow Orchestrator…`)
+    fetch(MESH+'/emoji',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({script: code})
+    }).then(r=>r.json()).then(d=>{
+      addOutput(`> Phase: ${d.phase||'ROAM'} · tokens: ${d.tokens?.length||0}`)
+    }).catch(()=>addOutput('> CF Worker offline — running in local mode'))
+  }
+  updateWormBar(seal)
+}
+
+function sealCode() {
+  if (!editor) return
+  const code = editor.getValue()
+  const seal = wormSeal('FORGE', 'SEAL', code.slice(0,64))
+  addOutput(`> 🔒 WORM SEALED · ${seal}`)
+  updateWormBar(seal)
+}
+
+function addOutput(line) {
+  const out = document.getElementById('ide-output')
+  out.textContent += '\n' + line
+  out.scrollTop = out.scrollHeight
+}
+
+// ── WORM chain ─────────────────────────────────────────────────────────────────
+async function wormSeal(agent, op, data) {
+  const prev = wormChain.length ? wormChain[wormChain.length-1].seal : '0'.repeat(64)
+  const input = `${prev}|${agent}|${op}|${data}|${Date.now()}`
+  const buf = new TextEncoder().encode(input)
+  const hash = await crypto.subtle.digest('SHA-256', buf)
+  const seal = Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('')
+  wormChain.push({agent,op,data,seal,ts:new Date().toISOString()})
+  return seal
+}
+
+// Make sync version for non-async contexts
+function wormSeal(agent, op, data) {
+  const prev = wormChain.length ? wormChain[wormChain.length-1].seal : '0000000000000000'
+  const raw = `${prev}|${agent}|${op}|${data}|${Date.now()}`
+  let h = 0x811c9dc5
+  for (let i=0;i<raw.length;i++) { h ^= raw.charCodeAt(i); h = (h*0x01000193)>>>0 }
+  const seal = h.toString(16).padStart(8,'0') + Math.random().toString(16).slice(2,18)
+  wormChain.push({agent,op,data,seal,ts:new Date().toISOString()})
+  return seal
+}
+
+function updateWormBar(seal) {
+  document.getElementById('worm-seal').textContent = `seal:${seal} · chain:${wormChain.length}`
+  document.getElementById('worm-dot').style.background = '#00ff88'
+  document.getElementById('worm-badge').textContent = `WORM ●`
+  document.getElementById('worm-badge').style.color = '#00ff88'
+}
+
+// ── Feed ───────────────────────────────────────────────────────────────────────
+const SRC_COLOR = {discord:'#5865F2',telegram:'#229ED9',council:'#00ff88',nova:'#bf5af2'}
+const SRC_ICON  = {discord:'📡',telegram:'✈',council:'⬡',nova:'✦'}
+
+function pollFeed() {
+  fetch(`${MESH}/feed?since=${feedSince}`)
+    .then(r=>r.json())
+    .then(d=>{
+      if (!d.events?.length) return
+      const list = document.getElementById('feed-list')
+      const empty = document.getElementById('feed-empty')
+      if (empty) empty.remove()
+      d.events.sort((a,b)=>b.id-a.id).forEach(ev=>{
+        if (ev.id <= feedSince) return
+        feedSince = Math.max(feedSince, ev.id)
+        const el = document.createElement('div')
+        el.className = 'feed-item'
+        const color = SRC_COLOR[ev.source]||'#555'
+        el.innerHTML = `<div class="feed-dot" style="background:${color}"></div>
+          <div class="feed-body">
+            <div class="feed-src" style="color:${color}">${SRC_ICON[ev.source]||'◌'} ${ev.source.toUpperCase()}</div>
+            <div class="feed-text">${(ev.payload?.text||ev.type||'').slice(0,120)}</div>
+            <div class="feed-ts">${new Date(ev.ts).toLocaleTimeString()}</div>
+          </div>`
+        list.insertBefore(el, list.firstChild)
+      })
+    }).catch(()=>{})
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+buildRoster()
+buildMotions()
+pollFeed()
+setInterval(pollFeed, 10000)
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{})
+}
+</script>
+</body>
+</html>
